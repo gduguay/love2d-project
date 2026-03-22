@@ -12,7 +12,7 @@ local function playerStates()
             },
 
             walk = {
-                cancellable_by = { "idle", "walk", "attack", "hurt" },
+                cancellable_by = { "idle", "walk", "attack", "dash", "hurt" },
             },
 
             attack = {
@@ -24,7 +24,13 @@ local function playerStates()
                 onComplete = "idle",
             },
 
-            -- Future states: hurt, dash, etc.
+            dash = {
+                phases = {
+                    { name = "active",   duration = 0.10, cancellable_by = {} },
+                    { name = "recovery", duration = 0.08, cancellable_by = { "walk", "idle" } },
+                },
+                onComplete = "idle",
+            },
         },
 
         initial = "idle",

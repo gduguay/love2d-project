@@ -28,6 +28,16 @@ function Actions.SwordAttack(entity_id, direction, ttl)
     }
 end
 
+function Actions.Dash(entity_id, direction, speed, duration)
+    return {
+        type = "dash",
+        entity_id = entity_id,
+        direction = direction,
+        speed = speed,
+        duration = duration,
+    }
+end
+
 function Actions.SetEntityState(entity_id, state, phase)
     return {
         type = "set_entity_state",

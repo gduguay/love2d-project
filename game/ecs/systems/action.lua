@@ -20,6 +20,8 @@ function ActionSystem:update(world, dt)
                 self:handleStop(world, entity, action)
             elseif action.type == "sword_attack" then
                 self:handleSwordAttack(world, entity, action)
+            elseif action.type == "dash" then
+                self:handleDash(world, entity, action)
             elseif action.type == "set_entity_state" then
                 self:handleSetEntityState(world, entity, action)
             end
@@ -89,6 +91,21 @@ function ActionSystem:handleSwordAttack(world, entity, action)
         },
         ZOrder = 10,
     })
+end
+
+function ActionSystem:handleDash(world, entity, action)
+    if entity.Velocity then
+        local dir = action.direction
+        local speed = action.speed
+        local dx, dy = 0, 0
+        if dir == "up" then    dy = -1
+        elseif dir == "down" then  dy = 1
+        elseif dir == "left" then  dx = -1
+        elseif dir == "right" then dx = 1
+        end
+        entity.Velocity.x = dx * speed
+        entity.Velocity.y = dy * speed
+    end
 end
 
 function ActionSystem:handleSetEntityState(world, entity, action)

@@ -235,6 +235,8 @@ function RoomScene:wireEvents()
     world:on("love:keypressed", function(key)
         if key == "space" or key == "x" then
             self.player:handleAttackPressed(world)
+        elseif key == "m" then
+            self.player:handleDashPressed(world)
         elseif key == "f3" then
             world:setPerfEnabled(not world:isPerfEnabled())
             print("[PERF] profiler " .. (world:isPerfEnabled() and "enabled" or "disabled"))
@@ -314,6 +316,15 @@ function RoomScene:drawHUD()
     local monsterText = "M: " .. tostring(#self.monsterEntities)
     local monsterX = fpsX - love.graphics.getFont():getWidth(monsterText) - 8
     love.graphics.print(monsterText, monsterX, hudY + 1)
+
+    -- Player state/phase
+    local stateText = view.state or "?"
+    if view.phase then
+        stateText = stateText .. ":" .. view.phase
+    end
+    local stateX = startX + view.maxHp * heartSpacing + 8
+    love.graphics.setColor(0.8, 0.8, 0.2, 1)
+    love.graphics.print(stateText, stateX, hudY + 1)
 
     love.graphics.setColor(1, 1, 1, 1)
 end

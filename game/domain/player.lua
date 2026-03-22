@@ -73,6 +73,12 @@ function Player:handleAttackPressed(world)
     self:_drainSignals(world)
 end
 
+-- Called when dash key is pressed (event-driven, not polled)
+function Player:handleDashPressed(world)
+    self.fsm:request("dash")
+    self:_drainSignals(world)
+end
+
 -- Sync the view model from ECS state. Called each frame after world:update().
 function Player:syncView(world)
     local entity = world:getEntityById(self.entity_id)
@@ -100,6 +106,7 @@ end
 function Player:_drainSignals(world)
     local signals = self.fsm:drain()
     for _, signal in ipairs(signals) do
+        print("Player:_drainSignals", signal.type, signal.state, signal.phase)
         self:_handleSignal(signal, world)
     end
 end
@@ -123,6 +130,13 @@ function Player:_onEnter(signal, world)
 
     elseif signal.state == "attack" then
         world:pushAction(Actions.Stop(self.entity_id))
+
+    elseif signal.state == "dash" then
+        -- Dash: move quickly forward 1.5 tiles (48px) over 0.10s → 480 px/s
+        local entity = world:getEntityById(self.entity_id)
+        if entity and entity.Facing then
+            world:pushAction(Actions.Dash(self.entity_id, entity.Facing.direction, 480, 0.10))
+        end
     end
 end
 
@@ -136,6 +150,8 @@ function Player:_onPhase(signal, world)
         if entity and entity.Facing then
             world:pushAction(Actions.SwordAttack(self.entity_id, entity.Facing.direction, 0.15))
         end
+    elseif signal.state == "dash" and signal.phase == "recovery" then
+        world:pushAction(Actions.Stop(self.entity_id))
     end
 end
 
