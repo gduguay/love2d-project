@@ -15,6 +15,7 @@ local SwordSystem = require("game.ecs.systems.sword")
 local BumpSystem = require("game.ecs.systems.bump")
 local AnimationSystem = require("game.ecs.systems.animation")
 local TimerSystem = require("game.ecs.systems.timer")
+local DamageSystem = require("game.ecs.systems.damage")
 local RenderSystem = require("game.ecs.systems.render")
 
 local WorldScene = require("scenes.worldscene")
@@ -39,6 +40,8 @@ function RoomScene:__init__()
     actionSystem._perfName = "ActionSystem"
     local swordSystem = SwordSystem:new()
     swordSystem._perfName = "SwordSystem"
+    local damageSystem = DamageSystem:new()
+    damageSystem._perfName = "DamageSystem"
     local bumpSystem = BumpSystem:new()
     bumpSystem._perfName = "BumpSystem"
     local animationSystem = AnimationSystem:new()
@@ -51,6 +54,7 @@ function RoomScene:__init__()
     self.world = World:new({
         actionSystem,
         swordSystem,
+        damageSystem,
         bumpSystem,
         animationSystem,
         timerSystem,
@@ -194,6 +198,7 @@ function RoomScene:createMonsters(count)
             Velocity = Components.Velocity(vx, vy),
             Collider = Components.Collider(4, 4, "bounce"),
             Monster = Components.Monster(),
+            Health = Components.Health(1, 1),
             Drawable = self:makeMonsterDrawable(r, g, b),
             ZOrder = Components.ZOrder(1),
         })
@@ -214,10 +219,16 @@ end
 function RoomScene:wireEvents()
     local world = self.world
 
-    -- Listen for sword hits (ECS → Domain)
-    world:on(Events.SWORD_HIT, function(swordEntity, targetEntity)
-        -- Future: apply damage, knockback, etc.
-        -- For now, just a proof-of-concept
+    -- Track monster deaths so we can remove them from monsterEntities
+    world:on(Events.ENTITY_DIED, function(entity)
+        if entity.Monster then
+            for i, m in ipairs(self.monsterEntities) do
+                if m == entity then
+                    table.remove(self.monsterEntities, i)
+                    break
+                end
+            end
+        end
     end)
 
     -- Listen for attack key press (forwarded from love:keypressed)

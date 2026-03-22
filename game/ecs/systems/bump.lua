@@ -43,6 +43,7 @@ end
 function BumpSystem:update(world, dt)
     local monsterFilter = function(_, other)
         if other.Wall then return "bounce" end
+        if other.SwordHitbox then return "cross" end
         return nil
     end
 
