@@ -1,0 +1,19 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# LÖVE build artifacts
+*.love
+*.app
+*.exe
+
+# Logs
+*.log
+IMG_0270.png
+static-assets-upload*.png
