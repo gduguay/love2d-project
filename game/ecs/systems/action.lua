@@ -18,14 +18,18 @@ function ActionSystem:update(world, dt)
                 self:handleMove(world, entity, action)
             elseif action.type == "stop" then
                 self:handleStop(world, entity, action)
-            elseif action.type == "attack" then
-                self:handleAttack(world, entity, action)
+            elseif action.type == "sword_attack" then
+                self:handleSwordAttack(world, entity, action)
+            elseif action.type == "set_entity_state" then
+                self:handleSetEntityState(world, entity, action)
             end
         end
     end
 end
 
 function ActionSystem:handleMove(world, entity, action)
+    -- Movement gating is handled by the domain FSM — if this action arrives,
+    -- the FSM has already approved it.
     if entity.Velocity and entity.MovementSpeed then
         local speed = entity.MovementSpeed
         entity.Velocity.x = action.dx * speed
@@ -52,14 +56,9 @@ function ActionSystem:handleStop(world, entity, action)
     end
 end
 
-function ActionSystem:handleAttack(world, entity, action)
-    if not entity.Attacking then return end
-    if entity.Attacking.active then return end -- already attacking
-
-    entity.Attacking.active = true
-    entity.Attacking.timer = entity.Attacking.duration
-
-    -- Spawn sword hitbox entity in front of the player
+function ActionSystem:handleSwordAttack(world, entity, action)
+    -- Spawns the sword hitbox entity. TTL is provided by the domain (FSM phase duration).
+    -- State gating (preventing double-attacks, locking movement) is handled by the domain FSM.
     local dir = action.direction
     local pos = entity.Position
     if not pos then return end
@@ -80,7 +79,7 @@ function ActionSystem:handleAttack(world, entity, action)
     world:spawn({
         Position = { cx = pos.cx + ox, cy = pos.cy + oy },
         Collider = { w = sw, h = sh, collisionType = "cross" },
-        SwordHitbox = { owner = entity.uid, ttl = entity.Attacking.duration },
+        SwordHitbox = { owner = entity.uid, ttl = action.ttl },
         Drawable = {
             drawAt = function(_, x, y)
                 love.graphics.setColor(1, 1, 1, 0.8)
@@ -90,6 +89,13 @@ function ActionSystem:handleAttack(world, entity, action)
         },
         ZOrder = 10,
     })
+end
+
+function ActionSystem:handleSetEntityState(world, entity, action)
+    if entity.EntityState then
+        entity.EntityState.state = action.state
+        entity.EntityState.phase = action.phase
+    end
 end
 
 return ActionSystem

@@ -19,11 +19,21 @@ function Actions.Stop(entity_id)
     }
 end
 
-function Actions.Attack(entity_id, direction)
+function Actions.SwordAttack(entity_id, direction, ttl)
     return {
-        type = "attack",
+        type = "sword_attack",
         entity_id = entity_id,
         direction = direction,
+        ttl = ttl,
+    }
+end
+
+function Actions.SetEntityState(entity_id, state, phase)
+    return {
+        type = "set_entity_state",
+        entity_id = entity_id,
+        state = state,
+        phase = phase,  -- nil for phaseless states
     }
 end
 

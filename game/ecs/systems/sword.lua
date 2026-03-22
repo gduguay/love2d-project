@@ -29,18 +29,6 @@ function SwordSystem:update(world, dt)
     end
     self.pendingDestroy = {}
 
-    -- Update attacking state on entities
-    world:with({"Attacking"}, function(entity)
-        local atk = entity.Attacking
-        if atk.active then
-            atk.timer = atk.timer - dt
-            if atk.timer <= 0 then
-                atk.active = false
-                atk.timer = 0
-            end
-        end
-    end)
-
     -- Count down sword hitbox TTL
     world:with({"SwordHitbox"}, function(entity)
         entity.SwordHitbox.ttl = entity.SwordHitbox.ttl - dt

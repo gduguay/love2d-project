@@ -154,7 +154,7 @@ function RoomScene:createPlayer()
         AnimationState = Components.AnimationState(animations, "idle_down"),
         PlayerControlled = Components.PlayerControlled(),
         Health = Components.Health(3, 3),
-        Attacking = Components.Attacking(0.2),
+        EntityState = Components.EntityState("idle"),
         ZOrder = Components.ZOrder(1),
     })
 
@@ -238,7 +238,10 @@ function RoomScene:wireEvents()
 end
 
 function RoomScene:update(dt)
-    -- Domain layer: read input, produce actions
+    -- Domain layer: tick FSM timers (auto-transitions, phase advancement)
+    self.player:updateFSM(dt, self.world)
+
+    -- Domain layer: read input, produce actions (gated by FSM)
     self.player:handleInput(self.world)
 
     -- ECS layer: consume actions, simulate, emit events

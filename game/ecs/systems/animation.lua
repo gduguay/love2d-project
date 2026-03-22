@@ -48,6 +48,13 @@ end
 
 function AnimationSystem:resolveAnimationName(entity)
     local facing = entity.Facing and entity.Facing.direction or "down"
+
+    -- Prefer EntityState (domain FSM) when available
+    if entity.EntityState then
+        return entity.EntityState.state .. "_" .. facing
+    end
+
+    -- Fallback: infer from Attacking/Velocity (for entities without FSM, e.g. simple NPCs)
     local v = entity.Velocity
 
     -- Attacking overrides movement animation

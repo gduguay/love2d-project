@@ -49,6 +49,10 @@ function Components.SwordHitbox(owner_id, ttl)
     return { owner = owner_id, ttl = ttl or 0.15 }
 end
 
+function Components.EntityState(state, phase)
+    return { state = state or "idle", phase = phase }
+end
+
 -- Tag components (just return true)
 function Components.Solid()       return true end
 function Components.PlayerControlled() return true end
