@@ -41,6 +41,20 @@ function BumpSystem:removeEntity(entity)
 end
 
 function BumpSystem:update(world, dt)
+    local monsterFilter = function(_, other)
+        if other.Wall then return "bounce" end
+        return nil
+    end
+
+    local defaultFilter = function(item, other)
+        -- Sword hitboxes cross through everything
+        if item.SwordHitbox then return "cross" end
+        -- Solid entities slide against other solids/walls
+        if item.Solid and (other.Solid or other.Wall) then return "slide" end
+        -- Everything else crosses
+        return "cross"
+    end
+
     -- Move all entities with Collider + Position + Velocity
     world:with({"Collider", "Position", "Velocity"}, function(entity)
         local p = entity.Position
@@ -57,15 +71,7 @@ function BumpSystem:update(world, dt)
 
         if not self.bumpWorld:hasItem(entity) then return end
 
-        -- Determine collision filter based on entity type
-        local filter = function(item, other)
-            -- Sword hitboxes cross through everything
-            if item.SwordHitbox then return "cross" end
-            -- Solid entities slide against other solids/walls
-            if item.Solid and (other.Solid or other.Wall) then return "slide" end
-            -- Everything else crosses
-            return "cross"
-        end
+        local filter = entity.Monster and monsterFilter or defaultFilter
 
         local actualX, actualY, cols, len = self.bumpWorld:move(entity, goalX, goalY, filter)
 
@@ -73,9 +79,13 @@ function BumpSystem:update(world, dt)
         p.cx = actualX + c.w / 2
         p.cy = actualY + c.h / 2
 
-        -- Emit collision events
+        -- Reflect velocity for bounce collisions
         for i = 1, len do
             local col = cols[i]
+            if col.type == "bounce" and v then
+                if col.normal.x ~= 0 then v.x = -v.x end
+                if col.normal.y ~= 0 then v.y = -v.y end
+            end
             world:emit(Events.COLLISION, entity, col.other, col)
         end
     end)

@@ -27,6 +27,7 @@ local ROOM_ROWS = 6   -- 192 / 32 (leaving 8px for HUD at bottom)
 local ROOM_W = ROOM_COLS * TILE
 local ROOM_H = ROOM_ROWS * TILE
 local WALL_THICKNESS = TILE  -- 1 tile thick walls
+local MONSTER_STEP = 50
 
 -- Colors
 local FLOOR_COLOR = {0.76, 0.70, 0.50}  -- sandy/tan
@@ -34,13 +35,26 @@ local WALL_COLOR = {0.35, 0.25, 0.15}   -- dark brown
 
 function RoomScene:__init__()
     -- Create ECS world with systems in correct order
+    local actionSystem = ActionSystem:new()
+    actionSystem._perfName = "ActionSystem"
+    local swordSystem = SwordSystem:new()
+    swordSystem._perfName = "SwordSystem"
+    local bumpSystem = BumpSystem:new()
+    bumpSystem._perfName = "BumpSystem"
+    local animationSystem = AnimationSystem:new()
+    animationSystem._perfName = "AnimationSystem"
+    local timerSystem = TimerSystem:new()
+    timerSystem._perfName = "TimerSystem"
+    local renderSystem = RenderSystem:new()
+    renderSystem._perfName = "RenderSystem"
+
     self.world = World:new({
-        ActionSystem:new(),
-        SwordSystem:new(),
-        BumpSystem:new(),
-        AnimationSystem:new(),
-        TimerSystem:new(),
-        RenderSystem:new(),
+        actionSystem,
+        swordSystem,
+        bumpSystem,
+        animationSystem,
+        timerSystem,
+        renderSystem,
     })
 
     -- Spawn room geometry (walls)
@@ -52,6 +66,10 @@ function RoomScene:__init__()
     -- Create domain-layer Player object
     self.player = Player:new(playerEntity.uid)
     self.player:syncView(self.world)
+    self.monsterEntities = {}
+
+    -- Spawn bouncing monsters
+    self:createMonsters(20)
 
     -- Wire ECS events → Domain
     self:wireEvents()
@@ -143,6 +161,56 @@ function RoomScene:createPlayer()
     return entity
 end
 
+function RoomScene:makeMonsterDrawable(r, g, b)
+    return {
+        drawAt = function(_, x, y)
+            love.graphics.setColor(r, g, b, 1)
+            love.graphics.rectangle("fill", x - 2, y - 2, 4, 4)
+            love.graphics.setColor(1, 1, 1, 1)
+        end
+    }
+end
+
+function RoomScene:createMonsters(count)
+    local margin = WALL_THICKNESS + 4  -- keep monsters inside walls
+    for i = 1, count do
+        -- Random position inside the room
+        local cx = margin + math.random() * (ROOM_W - 2 * margin)
+        local cy = margin + math.random() * (ROOM_H - 2 * margin)
+
+        -- Random direction and speed
+        local angle = math.random() * math.pi * 2
+        local speed = 30 + math.random() * 70  -- 30-100 pixels/sec
+        local vx = math.cos(angle) * speed
+        local vy = math.sin(angle) * speed
+
+        -- Random bright color
+        local r = 0.4 + math.random() * 0.6
+        local g = 0.4 + math.random() * 0.6
+        local b = 0.4 + math.random() * 0.6
+
+        local monster = self.world:spawn({
+            Position = Components.Position(cx, cy),
+            Velocity = Components.Velocity(vx, vy),
+            Collider = Components.Collider(4, 4, "bounce"),
+            Monster = Components.Monster(),
+            Drawable = self:makeMonsterDrawable(r, g, b),
+            ZOrder = Components.ZOrder(1),
+        })
+        table.insert(self.monsterEntities, monster)
+    end
+end
+
+function RoomScene:removeMonsters(count)
+    local toRemove = math.min(count, #self.monsterEntities)
+    for i = 1, toRemove do
+        local monster = table.remove(self.monsterEntities)
+        if monster then
+            self.world:destroy(monster)
+        end
+    end
+end
+
 function RoomScene:wireEvents()
     local world = self.world
 
@@ -156,6 +224,15 @@ function RoomScene:wireEvents()
     world:on("love:keypressed", function(key)
         if key == "space" or key == "x" then
             self.player:handleAttackPressed(world)
+        elseif key == "f3" then
+            world:setPerfEnabled(not world:isPerfEnabled())
+            print("[PERF] profiler " .. (world:isPerfEnabled() and "enabled" or "disabled"))
+        elseif key == "]" then
+            self:createMonsters(MONSTER_STEP)
+            print("[PERF] monsters=" .. tostring(#self.monsterEntities))
+        elseif key == "[" then
+            self:removeMonsters(MONSTER_STEP)
+            print("[PERF] monsters=" .. tostring(#self.monsterEntities))
         end
     end)
 end
@@ -213,6 +290,16 @@ function RoomScene:drawHUD()
         local hx = startX + (i - 1) * heartSpacing
         love.graphics.rectangle("fill", hx, hudY + 1, heartSize, heartSize)
     end
+
+    -- FPS counter
+    love.graphics.setColor(1, 1, 1, 1)
+    local fpsText = "FPS: " .. love.timer.getFPS()
+    local fpsX = ROOM_W - love.graphics.getFont():getWidth(fpsText) - 4
+    love.graphics.print(fpsText, fpsX, hudY + 1)
+
+    local monsterText = "M: " .. tostring(#self.monsterEntities)
+    local monsterX = fpsX - love.graphics.getFont():getWidth(monsterText) - 8
+    love.graphics.print(monsterText, monsterX, hudY + 1)
 
     love.graphics.setColor(1, 1, 1, 1)
 end

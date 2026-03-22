@@ -53,5 +53,6 @@ end
 function Components.Solid()       return true end
 function Components.PlayerControlled() return true end
 function Components.Wall()        return true end
+function Components.Monster()     return true end
 
 return Components
