@@ -6,6 +6,8 @@ local World = require("game.ecs.world")
 local Components = require("game.ecs.components")
 local Events = require("game.events")
 local Player = require("game.domain.player")
+local WallHuggerAI = require("game.domain.wall_hugger_ai")
+local RoamerAI = require("game.domain.roamer_ai")
 local SpriteSheet = require("game.drawables.spritesheet")
 local Placeholder = require("game.drawables.placeholder")
 
@@ -71,9 +73,16 @@ function RoomScene:__init__()
     self.player = Player:new(playerEntity.uid)
     self.player:syncView(self.world)
     self.monsterEntities = {}
+    self.aiControllers = {}
 
     -- Spawn bouncing monsters
     self:createMonsters(20)
+
+    -- Spawn one AI patrol monster
+    self:createPatrolMonster()
+
+    -- Spawn one AI roamer monster
+    self:createRoamerMonster()
 
     -- Wire ECS events → Domain
     self:wireEvents()
@@ -216,6 +225,58 @@ function RoomScene:removeMonsters(count)
     end
 end
 
+function RoomScene:createPatrolMonster()
+    local margin = WALL_THICKNESS + 6
+    local entity = self.world:spawn({
+        Position = Components.Position(margin, margin),
+        Velocity = Components.Velocity(0, 0),
+        Facing = Components.Facing("right"),
+        Collider = Components.Collider(8, 8, "slide"),
+        Solid = Components.Solid(),
+        MovementSpeed = Components.MovementSpeed(80),
+        Health = Components.Health(3, 3),
+        Drawable = {
+            drawAt = function(_, x, y)
+                love.graphics.setColor(1, 0.2, 0.2, 1)
+                love.graphics.rectangle("fill", x - 4, y - 4, 8, 8)
+                love.graphics.setColor(1, 1, 1, 1)
+            end
+        },
+        ZOrder = Components.ZOrder(1),
+    })
+
+    local ai = WallHuggerAI:new(entity.uid, { direction = "right", turnDir = "right" })
+    ai:init(self.world)
+    table.insert(self.aiControllers, ai)
+end
+
+function RoomScene:createRoamerMonster()
+    local margin = WALL_THICKNESS + TILE
+    local cx = margin + math.random() * (ROOM_W - 2 * margin)
+    local cy = margin + math.random() * (ROOM_H - 2 * margin)
+
+    local entity = self.world:spawn({
+        Position = Components.Position(cx, cy),
+        Velocity = Components.Velocity(0, 0),
+        Facing = Components.Facing("down"),
+        Collider = Components.Collider(8, 8, "slide"),
+        Solid = Components.Solid(),
+        MovementSpeed = Components.MovementSpeed(64),
+        Health = Components.Health(2, 2),
+        Drawable = {
+            drawAt = function(_, x, y)
+                love.graphics.setColor(0.2, 0.6, 1, 1)
+                love.graphics.rectangle("fill", x - 4, y - 4, 8, 8)
+                love.graphics.setColor(1, 1, 1, 1)
+            end
+        },
+        ZOrder = Components.ZOrder(1),
+    })
+
+    local ai = RoamerAI:new(entity.uid, { interval = 3.0, moveTime = 0.5 })
+    table.insert(self.aiControllers, ai)
+end
+
 function RoomScene:wireEvents()
     local world = self.world
 
@@ -227,6 +288,13 @@ function RoomScene:wireEvents()
                     table.remove(self.monsterEntities, i)
                     break
                 end
+            end
+        end
+        -- Remove dead AI controllers
+        for i, ai in ipairs(self.aiControllers) do
+            if ai.entity_id == entity.uid then
+                table.remove(self.aiControllers, i)
+                break
             end
         end
     end)
@@ -256,6 +324,11 @@ function RoomScene:update(dt)
 
     -- Domain layer: read input, produce actions (gated by FSM)
     self.player:handleInput(self.world)
+
+    -- Domain layer: AI controllers produce actions
+    for _, ai in ipairs(self.aiControllers) do
+        ai:update(dt, self.world)
+    end
 
     -- ECS layer: consume actions, simulate, emit events
     self.world:update(dt)
